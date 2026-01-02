@@ -470,7 +470,7 @@ export const useAppStore = create<AppState>()(
                         attempts: 0,
                         previousScores: [],
                         allFeedback: [],
-                        startTime: Date.now()
+                        startTime: Date.now(),
                         checkpoints: []  // 🔥 ADD THIS
                     };
                 }
@@ -508,7 +508,7 @@ export const useAppStore = create<AppState>()(
                             lastUpdated: Date.now(),
                             attempts: 0,
                             previousScores: [],
-                            allFeedback: []
+                            allFeedback: [],
                             checkpoints: []  // 🔥 ADD THIS
                         };
                     }
