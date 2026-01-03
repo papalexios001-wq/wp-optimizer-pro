@@ -707,24 +707,30 @@ export type GodModePhase =
     | 'crawling'
     | 'resolving_post'
     | 'analyzing_existing'
-    | 'collect_intel'           // 🔥 NEW: Renamed from strategic_intel
+    | 'collect_intel'
+    | 'strategic_intel'        // 🔥 ADD THIS
     | 'entity_gap_analysis'
     | 'reference_discovery'
     | 'reference_validation'
     | 'neuron_analysis'
     | 'competitor_deep_dive'
-    | 'outline_generation'      // 🔥 NEW: Explicit outline phase
-    | 'section_drafts'          // 🔥 NEW: Section-by-section
-    | 'link_plan'               // 🔥 NEW: Internal link planning
-    | 'section_finalize'        // 🔥 NEW: Finalize with links
-    | 'merge_content'           // 🔥 NEW: Merge all sections
+    | 'outline_generation'
+    | 'section_drafts'
+    | 'link_plan'
+    | 'internal_linking'       // 🔥 ADD THIS
+    | 'section_finalize'
+    | 'merge_content'
+    | 'content_synthesis'      // 🔥 ADD THIS
+    | 'prompt_assembly'        // 🔥 ADD THIS
     | 'qa_validation'
-    | 'auto_fix_loop'           // 🔥 NEW: Self-improvement cycle
+    | 'auto_fix_loop'
+    | 'self_improvement'       // 🔥 ADD THIS
     | 'schema_generation'
     | 'final_polish'
     | 'publishing'
     | 'completed'
     | 'failed';
+
 
 export interface PipelineCheckpoint {
     phase: GodModePhase;

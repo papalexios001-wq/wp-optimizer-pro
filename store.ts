@@ -458,22 +458,24 @@ export const useAppStore = create<AppState>()(
             // ═══════════════════════════════════════════════════════════════
             
             initJobState: (pageId) => set((state) => {
-                const idx = state.pages.findIndex(p => p.id === pageId);
-                if (idx !== -1) {
-                    state.pages[idx].jobState = {
-                        targetId: pageId,
-                        status: 'idle',
-                        phase: 'idle',
-                        log: [],
-                        qaResults: [],
-                        lastUpdated: Date.now(),
-                        attempts: 0,
-                        previousScores: [],
-                        allFeedback: [],
-                        startTime: Date.now()
-                    };
-                }
-            }),
+    const idx = state.pages.findIndex(p => p.id === pageId);
+    if (idx !== -1) {
+        state.pages[idx].jobState = {
+            targetId: pageId,
+            status: 'idle',
+            phase: 'idle',
+            log: [],
+            qaResults: [],
+            lastUpdated: Date.now(),
+            attempts: 0,
+            previousScores: [],
+            allFeedback: [],
+            startTime: Date.now(),
+            checkpoints: []  // 🔥 ADD THIS LINE
+        };
+    }
+}),
+
             
             addJobLog: (pageId, msg) => set((state) => {
                 const idx = state.pages.findIndex(p => p.id === pageId);
@@ -495,25 +497,27 @@ export const useAppStore = create<AppState>()(
             }),
             
             updateJobState: (pageId, updates) => set((state) => {
-                const idx = state.pages.findIndex(p => p.id === pageId);
-                if (idx !== -1) {
-                    if (!state.pages[idx].jobState) {
-                        state.pages[idx].jobState = {
-                            targetId: pageId,
-                            status: 'idle',
-                            phase: 'idle',
-                            log: [],
-                            qaResults: [],
-                            lastUpdated: Date.now(),
-                            attempts: 0,
-                            previousScores: [],
-                            allFeedback: []
-                        };
-                    }
-                    Object.assign(state.pages[idx].jobState!, updates);
-                    state.pages[idx].jobState!.lastUpdated = Date.now();
-                }
-            }),
+    const idx = state.pages.findIndex(p => p.id === pageId);
+    if (idx !== -1) {
+        if (!state.pages[idx].jobState) {
+            state.pages[idx].jobState = {
+                targetId: pageId,
+                status: 'idle',
+                phase: 'idle',
+                log: [],
+                qaResults: [],
+                lastUpdated: Date.now(),
+                attempts: 0,
+                previousScores: [],
+                allFeedback: [],
+                checkpoints: []  // 🔥 ADD THIS LINE
+            };
+        }
+        Object.assign(state.pages[idx].jobState!, updates);
+        state.pages[idx].jobState!.lastUpdated = Date.now();
+    }
+}),
+
 
             // ═══════════════════════════════════════════════════════════════
             // SELECTION MANAGEMENT
@@ -627,28 +631,30 @@ export const useAppStore = create<AppState>()(
             // ═══════════════════════════════════════════════════════════════
             
             setSemanticCache: (type, key, data) => set((state) => {
-                const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '-');
-                
-                // Initialize the cache type if it doesn't exist
-                if (!state.semanticCache[type]) {
-                    state.semanticCache[type] = {};
-                }
-                
-                state.semanticCache[type][normalizedKey] = { 
-                    data, 
-                    timestamp: Date.now() 
-                };
-                
-                // Clean up old entries (keep max 100 per type)
-                const entries = Object.entries(state.semanticCache[type]);
-                if (entries.length > 100) {
-                    const sortedEntries = entries.sort((a, b) => 
-                        (b[1] as SemanticCacheEntry<any>).timestamp - (a[1] as SemanticCacheEntry<any>).timestamp
-                    );
-                    const toKeep = sortedEntries.slice(0, 80);
-                    state.semanticCache[type] = Object.fromEntries(toKeep) as any;
-                }
-            }),
+    const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '-');
+    
+    // Initialize the cache type if it doesn't exist
+    if (!state.semanticCache[type]) {
+        state.semanticCache[type] = {} as any;
+    }
+    
+    // 🔥 FIX: Use type assertion to avoid complex generic issues
+    (state.semanticCache[type] as any)[normalizedKey] = { 
+        data, 
+        timestamp: Date.now() 
+    };
+    
+    // Clean up old entries (keep max 100 per type)
+    const entries = Object.entries(state.semanticCache[type]);
+    if (entries.length > 100) {
+        const sortedEntries = entries.sort((a, b) => 
+            (b[1] as SemanticCacheEntry<any>).timestamp - (a[1] as SemanticCacheEntry<any>).timestamp
+        );
+        const toKeep = sortedEntries.slice(0, 80);
+        (state.semanticCache as any)[type] = Object.fromEntries(toKeep);
+    }
+}),
+
 
             getSemanticCache: (type, key, maxAge = 3600000) => {
                 const state = get();

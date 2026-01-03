@@ -31,6 +31,13 @@ import {
     SerpLengthPolicy, ContentOutline, SectionOutline, GeneratedSection
 } from '../types';
 
+import { 
+    injectInternalLinks,
+    validateAnchorStrict,
+    // ... other imports from utils
+} from '../utils';
+
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
