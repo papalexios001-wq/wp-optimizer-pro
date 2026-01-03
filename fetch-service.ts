@@ -229,7 +229,7 @@ export async function resilientApiCall<T>(
     throw lastError || new Error('Unknown error in resilientApiCall');
 }
 
-function defaultRetryPredicate(error: Error, attempt: number): boolean {
+function defaultRetryPredicate(error: Error, _attempt: number): boolean {
     const message = error.message.toLowerCase();
     
     // Always retry on network errors
@@ -416,11 +416,11 @@ async function titanFetchInternal(
                 }
                 
                 lastError = new Error(`HTTP ${res.status}: ${res.statusText}`);
-            } catch (e: any) {
-                if (e.name === 'AbortError') {
+            } catch (e: unknown) {
+                if (e instanceof Error && e.name === 'AbortError') {
                     lastError = new Error(`Request timeout after ${timeoutMs}ms`);
                 } else {
-                    lastError = e;
+                    lastError = e instanceof Error ? e : new Error(String(e));
                 }
             }
         }
@@ -462,9 +462,9 @@ export async function directFetch(
         
         clearTimeout(timeoutId);
         return res;
-    } catch (e: any) {
+    } catch (e: unknown) {
         clearTimeout(timeoutId);
-        if (e.name === 'AbortError') {
+        if (e instanceof Error && e.name === 'AbortError') {
             throw new Error(`Request timeout after ${timeoutMs}ms`);
         }
         throw e;
@@ -533,7 +533,7 @@ export async function serperSearch(
         ? 'https://google.serper.dev/search' 
         : `https://google.serper.dev/${type}`;
     
-    const body: Record<string, any> = { q: query, gl, hl, num };
+    const body: Record<string, unknown> = { q: query, gl, hl, num };
     if (tbs) body.tbs = tbs;
     if (page) body.page = page;
     
@@ -646,12 +646,6 @@ export async function validateUrl(
 ): Promise<UrlValidationResult> {
     const startTime = Date.now();
     
-    // ❌ DELETE THIS LOCAL HELPER — USE THE GLOBAL ONE INSTEAD
-    // const getContentType = (headers: Headers): string | undefined => {
-    //     const ct = headers.get('content-type');
-    //     return ct !== null ? ct : undefined;
-    // };
-    
     // Strategy 1: HEAD request (fastest)
     try {
         const controller = new AbortController();
@@ -673,7 +667,7 @@ export async function validateUrl(
             status: headRes.status, 
             isValid: headRes.status >= 200 && headRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: safeGetHeader(headRes.headers, 'content-type'),  // ✅ USE GLOBAL HELPER
+            contentType: safeGetHeader(headRes.headers, 'content-type'),
             redirectUrl: headRes.url !== url ? headRes.url : undefined
         };
     } catch {
@@ -698,7 +692,7 @@ export async function validateUrl(
             status: proxyRes.status, 
             isValid: proxyRes.status >= 200 && proxyRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: safeGetHeader(proxyRes.headers, 'content-type')  // ✅ USE GLOBAL HELPER
+            contentType: safeGetHeader(proxyRes.headers, 'content-type')
         };
     } catch {
         // Continue to next strategy
@@ -763,11 +757,9 @@ export async function processBatch<T, R>(
             batch.map((item, idx) => processor(item, batchStartIndex + idx))
         );
         
-        batchResults.forEach((result, idx) => {
+        batchResults.forEach((result) => {
             if (result.status === 'fulfilled') {
                 results.push(result.value);
-            } else {
-                console.warn(`[BATCH] Item ${batchStartIndex + idx} failed:`, result.reason);
             }
         });
         
@@ -802,14 +794,7 @@ export async function discoverAndValidateReferences(
     options: ReferenceDiscoveryOptions = {},
     onProgress?: (msg: string) => void
 ): Promise<ValidatedReference[]> {
-    const { 
-        targetCount = 15, 
-        geoCountry = 'us', 
-        geoLanguage = 'en', 
-        maxConcurrency = 5,
-        preferAuthority = true,
-        excludeDomains = []
-    } = options;
+    const { geoCountry = 'us' } = options;
     
     // Deduplication check
     const dedupeKey = createDedupeKey('refs', topic, geoCountry);
@@ -834,7 +819,6 @@ async function discoverAndValidateReferencesInternal(
         geoCountry = 'us', 
         geoLanguage = 'en', 
         maxConcurrency = 5,
-        preferAuthority = true,
         excludeDomains = []
     } = options;
     
@@ -875,8 +859,9 @@ async function discoverAndValidateReferencesInternal(
                     gl: geoCountry, 
                     hl: geoLanguage 
                 });
-            } catch (e: any) {
-                onProgress?.(`   ⚠️ Search failed: "${query.substring(0, 35)}..." - ${e.message}`);
+            } catch (e: unknown) {
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                onProgress?.(`   ⚠️ Search failed: "${query.substring(0, 35)}..." - ${errorMsg}`);
                 return null;
             }
         },
@@ -971,7 +956,7 @@ async function discoverAndValidateReferencesInternal(
                         break;
                     }
                 }
-            } catch {}
+            } catch { /* ignore */ }
             
             // Extract year from URL, title, or date
             const yearMatch = candidate.url.match(/20\d{2}/) || 
@@ -1038,7 +1023,7 @@ export async function performEntityGapAnalysis(
     options: EntityGapOptions = {},
     onProgress?: (msg: string) => void
 ): Promise<EntityGapAnalysis> {
-    const { geoCountry = 'us', geoLanguage = 'en' } = options;
+    const { geoCountry = 'us' } = options;
     
     // Deduplication check
     const dedupeKey = createDedupeKey('entityGap', keyword, geoCountry);
@@ -1096,7 +1081,7 @@ async function performEntityGapAnalysisInternal(
             let domain = '';
             try {
                 domain = new URL(result.link).hostname;
-            } catch {}
+            } catch { /* ignore */ }
             
             competitors.push({
                 url: result.link,
@@ -1158,7 +1143,7 @@ async function performEntityGapAnalysisInternal(
         // Get PAA questions with fallback strategies
         let paaQuestions = (data.peopleAlsoAsk || [])
             .slice(0, 15)
-            .map((p: any) => p.question);
+            .map((p: { question: string }) => p.question);
         
         if (paaQuestions.length < 5) {
             onProgress?.(`   → Only ${paaQuestions.length} PAA found, trying alternate queries...`);
@@ -1182,7 +1167,7 @@ async function performEntityGapAnalysisInternal(
                     });
                     
                     const newPAA = (altData.peopleAlsoAsk || [])
-                        .map((p: any) => p.question)
+                        .map((p: { question: string }) => p.question)
                         .filter((q: string) => !paaQuestions.includes(q));
                     
                     paaQuestions.push(...newPAA.slice(0, 5 - paaQuestions.length + 3));
@@ -1195,7 +1180,7 @@ async function performEntityGapAnalysisInternal(
             if (paaQuestions.length < 5 && data.relatedSearches) {
                 const generatedQuestions = (data.relatedSearches || [])
                     .slice(0, 10)
-                    .map((r: any) => {
+                    .map((r: { query: string }) => {
                         const query = r.query || '';
                         const startsWithQuestion = ['what', 'how', 'why', 'when', 'where', 'which', 'who']
                             .some(w => query.toLowerCase().startsWith(w));
@@ -1217,7 +1202,7 @@ async function performEntityGapAnalysisInternal(
         // Related searches
         const relatedSearches = (data.relatedSearches || [])
             .slice(0, 25)
-            .map((r: any) => r.query);
+            .map((r: { query: string }) => r.query);
         
         // Discover authoritative references
         onProgress?.(`   📚 Discovering authoritative references...`);
@@ -1230,12 +1215,13 @@ async function performEntityGapAnalysisInternal(
                 { targetCount: 15, geoCountry, geoLanguage }, 
                 onProgress
             );
-        } catch (e: any) {
-            onProgress?.(`   ⚠️ Reference discovery failed: ${e.message}`);
+        } catch (e: unknown) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            onProgress?.(`   ⚠️ Reference discovery failed: ${errorMsg}`);
         }
         
         // Detect SERP features
-        const serpFeatures: any[] = [];
+        const serpFeatures: Array<{ type: string; present: boolean; targetable: boolean }> = [];
         
         if (data.answerBox) {
             serpFeatures.push({ type: 'featured_snippet', present: true, targetable: true });
@@ -1246,7 +1232,7 @@ async function performEntityGapAnalysisInternal(
         if (paaQuestions.length > 0) {
             serpFeatures.push({ type: 'paa', present: true, targetable: true });
         }
-        if ((data as any).videos?.length > 0) {
+        if (data.videos && data.videos.length > 0) {
             serpFeatures.push({ type: 'video', present: true, targetable: true });
         }
         
@@ -1258,7 +1244,7 @@ async function performEntityGapAnalysisInternal(
         
         // Build topic clusters from related searches
         const topicClusters = relatedSearches
-            .filter(s => s.split(' ').length >= 2)
+            .filter((s: string) => s.split(' ').length >= 2)
             .slice(0, 12);
         
         return {
@@ -1290,8 +1276,9 @@ async function performEntityGapAnalysisInternal(
             featuredSnippetOpportunity: !data.answerBox,
             localPackPresent: false
         };
-    } catch (e: any) {
-        onProgress?.(`   ⚠️ Entity gap analysis failed: ${e.message}`);
+    } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        onProgress?.(`   ⚠️ Entity gap analysis failed: ${errorMsg}`);
         
         // Return minimal result instead of throwing
         return {
@@ -1365,8 +1352,9 @@ export async function wpTestConnection(
         
         const errorText = await res.text().catch(() => '');
         return { success: false, message: `HTTP ${res.status}: ${errorText.substring(0, 150)}` };
-    } catch (e: any) {
-        return { success: false, message: `Connection failed: ${e.message}` };
+    } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        return { success: false, message: `Connection failed: ${errorMsg}` };
     }
 }
 
@@ -1374,18 +1362,6 @@ export async function wpTestConnection(
 // 🔥🔥🔥 ENHANCED POST ID RESOLUTION — MULTI-STRATEGY (FIXES DUPLICATE URL BUG)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Resolve WordPress post ID from URL with multiple fallback strategies.
- * This is the CRITICAL function that prevents duplicate URLs.
- * 
- * STRATEGIES (in order):
- * 1. Preview URL parameters (?p= or ?page_id=)
- * 2. Direct slug search via REST API
- * 3. Title/content search via REST API
- * 4. HTML crawl for post ID markers
- * 5. Check if it's a page (not post)
- * 6. Fuzzy path segment matching
- */
 export async function wpResolvePostIdEnhanced(
     wpUrl: string, 
     targetUrl: string,
@@ -1440,17 +1416,14 @@ async function wpResolvePostIdInternal(
             .replace(/[#?].*$/, '')
             .trim();
         
-    } catch (e) {
+    } catch {
         // If URL parsing fails, use the input as slug
         slug = targetUrl.replace(/^\/+|\/+$/g, '').split('/').pop() || targetUrl;
     }
     
     onProgress?.(`   → Resolving post: "${slug}" (path: ${fullPath})`);
     
-    // ═══════════════════════════════════════════════════════════════════════════
     // STRATEGY 1: Direct slug search (most reliable)
-    // ═══════════════════════════════════════════════════════════════════════════
-    
     if (slug && slug.length > 1) {
         const url1 = `${baseUrl}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&status=any&_fields=id,link,slug,status`;
         
@@ -1480,7 +1453,7 @@ async function wpResolvePostIdInternal(
                                     onProgress?.(`   ✅ Found post ID: ${posts[0].id} (via URL match)`);
                                     return post.id;
                                 }
-                            } catch {}
+                            } catch { /* ignore */ }
                         }
                     }
                     
@@ -1489,15 +1462,13 @@ async function wpResolvePostIdInternal(
                     return posts[0].id;
                 }
             }
-        } catch (e: any) {
-            onProgress?.(`   ⚠️ Strategy 1 failed: ${e.message}`);
+        } catch (e: unknown) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            onProgress?.(`   ⚠️ Strategy 1 failed: ${errorMsg}`);
         }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
     // STRATEGY 2: Search by title (handles permalink mismatches)
-    // ═══════════════════════════════════════════════════════════════════════════
-    
     const humanReadableTitle = slug
         .replace(/-/g, ' ')
         .replace(/_/g, ' ')
@@ -1526,7 +1497,7 @@ async function wpResolvePostIdInternal(
                                     onProgress?.(`   ✅ Found post ID: ${post.id} (via search + URL match)`);
                                     return post.id;
                                 }
-                            } catch {}
+                            } catch { /* ignore */ }
                         }
                         
                         // Check if slug matches
@@ -1537,15 +1508,13 @@ async function wpResolvePostIdInternal(
                     }
                 }
             }
-        } catch (e: any) {
-            onProgress?.(`   ⚠️ Strategy 2 failed: ${e.message}`);
+        } catch (e: unknown) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            onProgress?.(`   ⚠️ Strategy 2 failed: ${errorMsg}`);
         }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
     // STRATEGY 3: Crawl the actual URL and extract post ID from HTML
-    // ═══════════════════════════════════════════════════════════════════════════
-    
     try {
         onProgress?.(`   → Strategy 3: Crawling URL to extract post ID...`);
         const crawlRes = await titanFetch(targetUrl, { timeoutMs: 12000, retries: 2 });
@@ -1553,22 +1522,14 @@ async function wpResolvePostIdInternal(
         
         // WordPress includes post ID in various places:
         const idPatterns = [
-            // Body class: class="... postid-123 ..."
             /class="[^"]*\bpostid-(\d+)\b[^"]*"/i,
-            // Article ID: <article id="post-123"
             /<article[^>]*\bid=["']post-(\d+)["']/i,
-            // Data attribute: data-post-id="123"
             /data-post-id=["'](\d+)["']/i,
-            // Comments form: <input name="comment_post_ID" value="123"
             /name=["']comment_post_ID["'][^>]*value=["'](\d+)["']/i,
-            // Edit link: /wp-admin/post.php?post=123&action=edit
             /\/wp-admin\/post\.php\?post=(\d+)/i,
-            // Shortlink: /?p=123
             /rel=["']shortlink["'][^>]*href=["'][^"]*\?p=(\d+)["']/i,
             /href=["'][^"]*\?p=(\d+)["'][^>]*rel=["']shortlink["']/i,
-            // WP REST API link: /wp-json/wp/v2/posts/123
             /\/wp-json\/wp\/v2\/posts\/(\d+)/i,
-            // wp-image class: wp-image-123 (for attachment pages)
             /class="[^"]*wp-post-(\d+)[^"]*"/i,
         ];
         
@@ -1577,20 +1538,17 @@ async function wpResolvePostIdInternal(
             if (match) {
                 const postId = parseInt(match[1], 10);
                 if (!isNaN(postId) && postId > 0) {
-                    const patternName = pattern.source.substring(0, 30);
                     onProgress?.(`   ✅ Found post ID: ${postId} (via HTML pattern)`);
                     return postId;
                 }
             }
         }
-    } catch (e: any) {
-        onProgress?.(`   ⚠️ Strategy 3 failed: ${e.message}`);
+    } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        onProgress?.(`   ⚠️ Strategy 3 failed: ${errorMsg}`);
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
     // STRATEGY 4: Check if it's a page instead of post
-    // ═══════════════════════════════════════════════════════════════════════════
-    
     if (slug && slug.length > 1) {
         try {
             onProgress?.(`   → Strategy 4: Checking if it's a page...`);
@@ -1608,21 +1566,19 @@ async function wpResolvePostIdInternal(
                     return pages[0].id;
                 }
             }
-        } catch (e: any) {
-            onProgress?.(`   ⚠️ Strategy 4 failed: ${e.message}`);
+        } catch (e: unknown) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            onProgress?.(`   ⚠️ Strategy 4 failed: ${errorMsg}`);
         }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
     // STRATEGY 5: Fuzzy search with individual path segments
-    // ═══════════════════════════════════════════════════════════════════════════
-    
     if (fullPath.includes('/')) {
         const pathSegments = fullPath.split('/').filter(Boolean);
         
         for (const segment of pathSegments.reverse()) {
             if (segment.length < 3) continue;
-            if (segment === slug) continue; // Already tried this
+            if (segment === slug) continue;
             
             try {
                 onProgress?.(`   → Strategy 5: Trying path segment "${segment}"...`);
@@ -1646,10 +1602,7 @@ async function wpResolvePostIdInternal(
         }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
     // STRATEGY 6: Custom post types
-    // ═══════════════════════════════════════════════════════════════════════════
-    
     const commonCustomTypes = ['product', 'portfolio', 'project', 'service', 'landing'];
     
     for (const postType of commonCustomTypes) {
@@ -1673,10 +1626,7 @@ async function wpResolvePostIdInternal(
         }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
     // ALL STRATEGIES FAILED
-    // ═══════════════════════════════════════════════════════════════════════════
-    
     onProgress?.(`   ❌ Could not resolve post ID for: ${targetUrl}`);
     onProgress?.(`   ⚠️ A NEW POST WILL BE CREATED (this may create a duplicate URL)`);
     
@@ -1691,7 +1641,6 @@ export async function wpResolvePostId(
     slug: string,
     auth?: BasicAuth
 ): Promise<number | null> {
-    // Construct a URL from the slug if it doesn't look like a URL
     const targetUrl = slug.startsWith('http') 
         ? slug 
         : `${wpBase(wpUrl)}/${slug}`;
@@ -1715,15 +1664,12 @@ export async function wpGetPostByUrl(
 // 📝 WORDPRESS CRUD OPERATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Get a WordPress post by ID
- */
 export async function wpGetPost(
     wpUrl: string, 
     postId: number, 
     auth?: BasicAuth,
     fields?: string[]
-): Promise<any> {
+): Promise<Record<string, unknown>> {
     const baseUrl = wpBase(wpUrl);
     const fieldsParam = fields ? `&_fields=${fields.join(',')}` : '';
     const url = `${baseUrl}/wp-json/wp/v2/posts/${postId}?context=edit${fieldsParam}`;
@@ -1742,9 +1688,6 @@ export async function wpGetPost(
     return res.json();
 }
 
-/**
- * Get the full URL of a WordPress post by ID
- */
 export async function wpGetPostFullUrl(
     wpUrl: string, 
     postId: number, 
@@ -1752,16 +1695,13 @@ export async function wpGetPostFullUrl(
 ): Promise<string | null> {
     try {
         const post = await wpGetPost(wpUrl, postId, auth, ['link']);
-        return post.link || null;
+        return (post.link as string) || null;
     } catch (e) {
         console.warn('[wpGetPostFullUrl] Failed:', e);
         return null;
     }
 }
 
-/**
- * Get post categories
- */
 export async function wpGetPostCategories(
     wpUrl: string, 
     postId: number, 
@@ -1769,15 +1709,12 @@ export async function wpGetPostCategories(
 ): Promise<number[]> {
     try {
         const post = await wpGetPost(wpUrl, postId, auth, ['categories']);
-        return post.categories || [];
+        return (post.categories as number[]) || [];
     } catch {
         return [];
     }
 }
 
-/**
- * Get post tags
- */
 export async function wpGetPostTags(
     wpUrl: string, 
     postId: number, 
@@ -1785,19 +1722,16 @@ export async function wpGetPostTags(
 ): Promise<number[]> {
     try {
         const post = await wpGetPost(wpUrl, postId, auth, ['tags']);
-        return post.tags || [];
+        return (post.tags as number[]) || [];
     } catch {
         return [];
     }
 }
 
-/**
- * Create a new WordPress post
- */
 export async function wpCreatePost(
     wpUrl: string, 
     auth: BasicAuth, 
-    data: any
+    data: Record<string, unknown>
 ): Promise<{ id: number; link: string }> {
     const url = `${wpBase(wpUrl)}/wp-json/wp/v2/posts`;
     
@@ -1818,15 +1752,11 @@ export async function wpCreatePost(
     return { id: result.id, link: result.link };
 }
 
-/**
- * Update an existing WordPress post
- * 🔥 CRITICAL: Preserves slug, featured image, categories, and tags by default
- */
 export async function wpUpdatePost(
     wpUrl: string, 
     auth: BasicAuth, 
     postId: number, 
-    data: any,
+    data: Record<string, unknown>,
     options: {
         preserveFeaturedImage?: boolean;
         preserveSlug?: boolean;
@@ -1843,40 +1773,34 @@ export async function wpUpdatePost(
     
     const url = `${wpBase(wpUrl)}/wp-json/wp/v2/posts/${postId}`;
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔥🔥🔥 CRITICAL: Build CLEAN payload — NEVER include fields we want to preserve
-    // ═══════════════════════════════════════════════════════════════════════════
+    const updateData: Record<string, unknown> = {};
     
-    const updateData: Record<string, any> = {};
-    
-    // ✅ ALWAYS include these content fields
+    // ALWAYS include these content fields
     if (data.title !== undefined) updateData.title = data.title;
     if (data.content !== undefined) updateData.content = data.content;
     if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.meta !== undefined) updateData.meta = data.meta;
     
-    // 🔥🔥🔥 SLUG: ABSOLUTELY NEVER INCLUDE WHEN PRESERVING
-    // This is the #1 cause of URL changes!
+    // SLUG: ABSOLUTELY NEVER INCLUDE WHEN PRESERVING
     if (preserveSlug) {
-        // DO NOT add slug to updateData — period.
         console.log(`[wpUpdatePost] 🔒 PRESERVING SLUG — not sending slug field`);
     } else if (data.slug !== undefined) {
         updateData.slug = data.slug;
         console.log(`[wpUpdatePost] ⚠️ CHANGING SLUG to: ${data.slug}`);
     }
     
-    // 🔥 FEATURED IMAGE: Only include if explicitly changing
+    // FEATURED IMAGE: Only include if explicitly changing
     if (!preserveFeaturedImage && data.featured_media !== undefined) {
         updateData.featured_media = data.featured_media;
     }
     
-    // 🔥 CATEGORIES: Only include if explicitly changing
+    // CATEGORIES: Only include if explicitly changing
     if (!preserveCategories && data.categories !== undefined) {
         updateData.categories = data.categories;
     }
     
-    // 🔥 TAGS: Only include if explicitly changing
+    // TAGS: Only include if explicitly changing
     if (!preserveTags && data.tags !== undefined) {
         updateData.tags = data.tags;
     }
@@ -1898,15 +1822,11 @@ export async function wpUpdatePost(
         throw new Error(`WP_UPDATE_ERROR: ${res.status} - ${errorMsg}`);
     }
     
-    // 🔥 VERIFY URL DIDN'T CHANGE
     console.log(`[wpUpdatePost] ✅ Updated post ${result.id} — Final URL: ${result.link}`);
     
     return { id: result.id, link: result.link };
 }
 
-/**
- * Get all categories from WordPress
- */
 export async function wpGetCategories(
     wpUrl: string, 
     auth?: BasicAuth
@@ -1923,20 +1843,17 @@ export async function wpGetCategories(
         if (!res.ok) return [];
         
         const categories = await res.json();
-        return categories.map((c: any) => ({ 
-            id: c.id, 
-            name: c.name, 
-            slug: c.slug,
-            count: c.count 
+        return categories.map((c: Record<string, unknown>) => ({ 
+            id: c.id as number, 
+            name: c.name as string, 
+            slug: c.slug as string,
+            count: c.count as number
         }));
     } catch {
         return [];
     }
 }
 
-/**
- * Get all tags from WordPress
- */
 export async function wpGetTags(
     wpUrl: string, 
     auth?: BasicAuth
@@ -1953,20 +1870,17 @@ export async function wpGetTags(
         if (!res.ok) return [];
         
         const tags = await res.json();
-        return tags.map((t: any) => ({ 
-            id: t.id, 
-            name: t.name, 
-            slug: t.slug,
-            count: t.count 
+        return tags.map((t: Record<string, unknown>) => ({ 
+            id: t.id as number, 
+            name: t.name as string, 
+            slug: t.slug as string,
+            count: t.count as number
         }));
     } catch {
         return [];
     }
 }
 
-/**
- * Update post meta (Yoast/RankMath/AIOSEO compatible)
- */
 export async function wpUpdatePostMeta(
     wpUrl: string, 
     auth: BasicAuth, 
@@ -1981,38 +1895,27 @@ export async function wpUpdatePostMeta(
 ): Promise<boolean> {
     const url = `${wpBase(wpUrl)}/wp-json/wp/v2/posts/${postId}`;
     
-    const metaPayload: Record<string, any> = {};
+    const metaPayload: Record<string, unknown> = {};
     
     if (meta.title) {
-        // Yoast
         metaPayload._yoast_wpseo_title = meta.title;
         metaPayload.yoast_wpseo_title = meta.title;
-        // RankMath
         metaPayload.rank_math_title = meta.title;
-        // AIOSEO
         metaPayload._aioseo_title = meta.title;
-        // SEOPress
         metaPayload._seopress_titles_title = meta.title;
     }
     
     if (meta.description) {
-        // Yoast
         metaPayload._yoast_wpseo_metadesc = meta.description;
         metaPayload.yoast_wpseo_metadesc = meta.description;
-        // RankMath
         metaPayload.rank_math_description = meta.description;
-        // AIOSEO
         metaPayload._aioseo_description = meta.description;
-        // SEOPress
         metaPayload._seopress_titles_desc = meta.description;
     }
     
     if (meta.focusKeyword) {
-        // Yoast
         metaPayload._yoast_wpseo_focuskw = meta.focusKeyword;
-        // RankMath
         metaPayload.rank_math_focus_keyword = meta.focusKeyword;
-        // AIOSEO
         metaPayload._aioseo_keyphrases = JSON.stringify([{ keyphrase: meta.focusKeyword }]);
     }
     
@@ -2068,9 +1971,6 @@ export interface FeaturedImageData {
 // 🖼️ IMAGE PRESERVATION & ALT TEXT OPTIMIZATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Get featured image data for a post
- */
 export async function wpGetFeaturedImage(
     wpUrl: string, 
     postId: number, 
@@ -2078,11 +1978,10 @@ export async function wpGetFeaturedImage(
 ): Promise<FeaturedImageData | null> {
     try {
         const post = await wpGetPost(wpUrl, postId, auth, ['featured_media']);
-        const mediaId = post.featured_media;
+        const mediaId = post.featured_media as number;
         
         if (!mediaId || mediaId === 0) return null;
         
-        // Fetch the media details
         const mediaUrl = `${wpBase(wpUrl)}/wp-json/wp/v2/media/${mediaId}?_fields=id,source_url,alt_text,title,media_details`;
         const mediaRes = await directFetch(mediaUrl, { 
             method: 'GET', 
@@ -2108,9 +2007,6 @@ export async function wpGetFeaturedImage(
     }
 }
 
-/**
- * Extract all images from HTML content
- */
 export function extractImagesFromContent(
     htmlContent: string
 ): Array<{ src: string; alt: string; title?: string; id?: string; classes?: string }> {
@@ -2140,9 +2036,6 @@ export function extractImagesFromContent(
     return images;
 }
 
-/**
- * Update media alt text in WordPress
- */
 export async function wpUpdateMediaAltText(
     wpUrl: string, 
     auth: BasicAuth, 
@@ -2153,7 +2046,7 @@ export async function wpUpdateMediaAltText(
 ): Promise<boolean> {
     const url = `${wpBase(wpUrl)}/wp-json/wp/v2/media/${mediaId}`;
     
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
         alt_text: altText
     };
     
@@ -2180,18 +2073,13 @@ export async function wpUpdateMediaAltText(
     }
 }
 
-/**
- * Update image alt text directly in HTML content
- */
 export function updateImageAltInContent(
     htmlContent: string, 
     imageSrc: string, 
     newAlt: string
 ): string {
-    // Escape special regex characters in the src
     const escapedSrc = imageSrc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     
-    // Try to replace existing alt attribute
     const imgWithAltRegex = new RegExp(
         `(<img[^>]*src=["']${escapedSrc}["'][^>]*)(alt=["'][^"']*["'])([^>]*>)`, 
         'gi'
@@ -2199,7 +2087,6 @@ export function updateImageAltInContent(
     
     let updated = htmlContent.replace(imgWithAltRegex, `$1alt="${newAlt}"$3`);
     
-    // If no alt attribute existed, add one
     if (updated === htmlContent) {
         const imgWithoutAltRegex = new RegExp(
             `(<img[^>]*src=["']${escapedSrc}["'])([^>]*>)`, 
@@ -2211,19 +2098,14 @@ export function updateImageAltInContent(
     return updated;
 }
 
-/**
- * Get media ID from URL
- */
 export async function wpGetMediaIdFromUrl(
     wpUrl: string, 
     imageUrl: string, 
     auth?: BasicAuth
 ): Promise<number | null> {
-    // Extract filename
     const filename = imageUrl.split('/').pop()?.split('?')[0];
     if (!filename) return null;
     
-    // Remove size suffix (e.g., -300x200) to get original filename
     const cleanFilename = filename.replace(/-\d+x\d+(\.\w+)$/, '$1');
     
     const searchUrl = `${wpBase(wpUrl)}/wp-json/wp/v2/media?search=${encodeURIComponent(cleanFilename)}&_fields=id,source_url`;
@@ -2240,14 +2122,12 @@ export async function wpGetMediaIdFromUrl(
         const media = await res.json();
         
         if (Array.isArray(media) && media.length > 0) {
-            // Try to find exact match
             for (const m of media) {
                 if (m.source_url && 
                     (m.source_url.includes(filename) || m.source_url.includes(cleanFilename))) {
                     return m.id;
                 }
             }
-            // Fall back to first result
             return media[0].id;
         }
     } catch (e) {
@@ -2257,15 +2137,12 @@ export async function wpGetMediaIdFromUrl(
     return null;
 }
 
-/**
- * Get all post data including images — comprehensive function
- */
 export async function wpGetPostWithImages(
     wpUrl: string, 
     postId: number, 
     auth?: BasicAuth
 ): Promise<{
-    post: any;
+    post: Record<string, unknown>;
     featuredImage: FeaturedImageData | null;
     contentImages: Array<{ src: string; alt: string; title?: string; id?: string }>;
     originalSlug: string;
@@ -2274,20 +2151,19 @@ export async function wpGetPostWithImages(
 }> {
     const post = await wpGetPost(wpUrl, postId, auth);
     
-    // Get featured image
     const featuredImage = await wpGetFeaturedImage(wpUrl, postId, auth);
     
-    // Extract content images
-    const content = post.content?.rendered || post.content?.raw || '';
+    const content = (post.content as { rendered?: string; raw?: string })?.rendered || 
+                    (post.content as { rendered?: string; raw?: string })?.raw || '';
     const contentImages = extractImagesFromContent(content);
     
     return {
         post,
         featuredImage,
         contentImages,
-        originalSlug: post.slug || '',
-        originalCategories: post.categories || [],
-        originalTags: post.tags || []
+        originalSlug: (post.slug as string) || '',
+        originalCategories: (post.categories as number[]) || [],
+        originalTags: (post.tags as number[]) || []
     };
 }
 
@@ -2314,15 +2190,12 @@ export async function fetchPageContent(url: string): Promise<PageContentResult> 
         
         const doc = new DOMParser().parseFromString(html, 'text/html');
         
-        // Extract title
         const title = doc.querySelector('title')?.textContent?.trim() || 
                       doc.querySelector('h1')?.textContent?.trim();
         
-        // Extract meta description
         const metaDescription = doc.querySelector('meta[name="description"]')?.getAttribute('content') ||
                                 doc.querySelector('meta[property="og:description"]')?.getAttribute('content');
         
-        // Remove non-content elements
         const removeSelectors = [
             'script', 'style', 'nav', 'footer', 'header', 'aside', 
             'noscript', 'iframe', '.sidebar', '.menu', '.navigation',
@@ -2336,12 +2209,10 @@ export async function fetchPageContent(url: string): Promise<PageContentResult> 
         const text = doc.body?.innerText || '';
         const words = text.split(/\s+/).filter(w => w.length > 0);
         
-        // Extract headings
         const headings = Array.from(doc.querySelectorAll('h1, h2, h3, h4'))
             .map(h => h.textContent?.trim() || '')
             .filter(Boolean);
         
-        // Extract images
         const images = Array.from(doc.querySelectorAll('img'))
             .map(img => ({
                 src: img.getAttribute('src') || '',
@@ -2366,8 +2237,9 @@ export async function fetchPageContent(url: string): Promise<PageContentResult> 
             metaDescription,
             images
         };
-    } catch (e: any) {
-        console.warn('[fetchPageContent] Failed:', e.message);
+    } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        console.warn('[fetchPageContent] Failed:', errorMsg);
         return { 
             html: '', 
             text: '', 
@@ -2381,7 +2253,7 @@ export async function fetchPageContent(url: string): Promise<PageContentResult> 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🔗 INTERNAL LINK TARGET DISCOVERY — FETCH ALL SITE POSTS FOR LINKING
+// 🔗 INTERNAL LINK TARGET DISCOVERY
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface InternalLinkDiscoveryOptions {
@@ -2455,68 +2327,9 @@ export async function discoverInternalLinkTargets(
         onProgress?.(`   ✅ Found ${targets.length} internal link targets`);
         return targets;
         
-    } catch (e: any) {
-        onProgress?.(`   ⚠️ Link discovery failed: ${e.message}`);
+    } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        onProgress?.(`   ⚠️ Link discovery failed: ${errorMsg}`);
         return [];
     }
 }
-
-
-
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 📦 EXPORTS SUMMARY
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/*
-FETCH SERVICE v25.0 EXPORTS:
-
-CORE UTILITIES:
-- calculateAdaptiveTimeout(): Smart timeout calculation
-- calculateBackoff(): Exponential backoff with jitter
-- sleep(): Async sleep utility
-- dedupeRequest(): Generic request deduplication
-
-CORE FETCH:
-- titanFetch(): Multi-proxy resilient fetcher with circuit breaker
-- directFetch(): Direct API calls with timeout
-- processBatch(): Parallel batch processor
-
-SEARCH:
-- serperSearch(): Serper API search with all result types
-
-REFERENCES:
-- discoverAndValidateReferences(): Parallelized reference discovery
-- validateUrl(): Multi-strategy URL validation
-- isAuthorityDomain(): Check if domain is authoritative
-
-ENTITY ANALYSIS:
-- performEntityGapAnalysis(): Comprehensive SERP entity analysis
-
-WORDPRESS - CONNECTION:
-- wpTestConnection(): Test WordPress connection
-
-WORDPRESS - POST RESOLUTION (🔥 CRITICAL):
-- wpResolvePostIdEnhanced(): Multi-strategy post ID resolution (6 strategies)
-- wpResolvePostId(): Legacy wrapper
-- wpGetPostByUrl(): URL-based resolution
-
-WORDPRESS - CRUD:
-- wpGetPost(): Get post by ID
-- wpCreatePost(): Create new post
-- wpUpdatePost(): Update existing post (preserves slug/images)
-- wpGetCategories(): Get all categories
-- wpGetTags(): Get all tags
-- wpUpdatePostMeta(): Update SEO meta (Yoast/RankMath/AIOSEO)
-
-WORDPRESS - IMAGES:
-- wpGetFeaturedImage(): Get featured image data
-- wpGetPostWithImages(): Get post with all images
-- extractImagesFromContent(): Extract images from HTML
-- wpUpdateMediaAltText(): Update media alt text
-- wpGetMediaIdFromUrl(): Get media ID from URL
-- updateImageAltInContent(): Update alt text in HTML
-
-PAGE CONTENT:
-- fetchPageContent(): Fetch and parse full page content
-*/
