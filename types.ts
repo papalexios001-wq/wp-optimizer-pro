@@ -708,7 +708,7 @@ export type GodModePhase =
     | 'resolving_post'
     | 'analyzing_existing'
     | 'collect_intel'
-    | 'strategic_intel'        // 🔥 ADD THIS
+    | 'strategic_intel'        // ← ADD THIS
     | 'entity_gap_analysis'
     | 'reference_discovery'
     | 'reference_validation'
@@ -717,19 +717,20 @@ export type GodModePhase =
     | 'outline_generation'
     | 'section_drafts'
     | 'link_plan'
-    | 'internal_linking'       // 🔥 ADD THIS
     | 'section_finalize'
     | 'merge_content'
-    | 'content_synthesis'      // 🔥 ADD THIS
-    | 'prompt_assembly'        // 🔥 ADD THIS
+    | 'prompt_assembly'        // ← ADD THIS
+    | 'content_synthesis'      // ← ADD THIS
     | 'qa_validation'
     | 'auto_fix_loop'
-    | 'self_improvement'       // 🔥 ADD THIS
+    | 'self_improvement'       // ← ADD THIS
+    | 'internal_linking'       // ← ADD THIS
     | 'schema_generation'
     | 'final_polish'
     | 'publishing'
     | 'completed'
     | 'failed';
+
 
 
 export interface PipelineCheckpoint {

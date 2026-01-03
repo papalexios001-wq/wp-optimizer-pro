@@ -1429,28 +1429,30 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = memo(({
     progress, 
     processingTime 
 }) => {
-    const phaseConfig: Record<GodModePhase, { icon: string; label: string; color: string; }> = {
-    // ═══════════════════════════════════════════════════════════════════════════
-    // MUST MATCH types.ts GodModePhase EXACTLY — ALL 23 PHASES
-    // ═══════════════════════════════════════════════════════════════════════════
+    const phaseConfig: Record<GodModePhase, { icon: string; label: string; color: string }> = {
     idle: { icon: '⏸️', label: 'Idle', color: '#8e8e93' },
     initializing: { icon: '🚀', label: 'Starting', color: '#0a84ff' },
     crawling: { icon: '🕷️', label: 'Crawling', color: '#64d2ff' },
     resolving_post: { icon: '📍', label: 'Resolving', color: '#0a84ff' },
     analyzing_existing: { icon: '🔍', label: 'Analyzing', color: '#bf5af2' },
     collect_intel: { icon: '🎯', label: 'Intel', color: '#5e5ce6' },
-    entity_gap_analysis: { icon: '🧠', label: 'Entities', color: '#bf5af2' },
+    strategic_intel: { icon: '🧠', label: 'Strategy', color: '#5e5ce6' },      // ← ADD
+    entity_gap_analysis: { icon: '🧬', label: 'Entities', color: '#bf5af2' },
     reference_discovery: { icon: '📚', label: 'References', color: '#0a84ff' },
     reference_validation: { icon: '✅', label: 'Validating', color: '#30d158' },
-    neuron_analysis: { icon: '🧬', label: 'NLP', color: '#30d158' },
-    competitor_deep_dive: { icon: '🔬', label: 'Competitors', color: '#64d2ff' },
+    neuron_analysis: { icon: '🔬', label: 'NLP', color: '#30d158' },
+    competitor_deep_dive: { icon: '🔎', label: 'Competitors', color: '#64d2ff' },
     outline_generation: { icon: '📋', label: 'Outline', color: '#0a84ff' },
     section_drafts: { icon: '✍️', label: 'Drafting', color: '#bf5af2' },
     link_plan: { icon: '🔗', label: 'Link Plan', color: '#64d2ff' },
     section_finalize: { icon: '📝', label: 'Finalizing', color: '#5e5ce6' },
     merge_content: { icon: '🔀', label: 'Merging', color: '#0a84ff' },
+    prompt_assembly: { icon: '🧩', label: 'Prompts', color: '#ff9f0a' },        // ← ADD
+    content_synthesis: { icon: '🎨', label: 'Generating', color: '#bf5af2' },   // ← ADD
     qa_validation: { icon: '🔍', label: 'QA Check', color: '#ffd60a' },
     auto_fix_loop: { icon: '🔄', label: 'Auto-Fix', color: '#ff9f0a' },
+    self_improvement: { icon: '📈', label: 'Improving', color: '#ff9f0a' },     // ← ADD
+    internal_linking: { icon: '🔗', label: 'Linking', color: '#0a84ff' },       // ← ADD
     schema_generation: { icon: '📊', label: 'Schema', color: '#5e5ce6' },
     final_polish: { icon: '✨', label: 'Polishing', color: '#ff375f' },
     publishing: { icon: '📤', label: 'Publishing', color: '#30d158' },
