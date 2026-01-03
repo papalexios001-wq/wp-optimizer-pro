@@ -618,7 +618,8 @@ function countQAPatternsOutsideFAQ(html: string): number {
 // 🔥 CONTENT STRUCTURE LOGGER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function logContentStructure(html: string, log: (msg: string, forceGlobal?: boolean) => void): void {
+function logContentStructure(html: string, log: (msg: string, progress?: number) => void): void {
+
     if (!html) return;
     
     const faqCount = (html.match(/❓|frequently\s+asked/gi) || []).length;
@@ -1112,10 +1113,14 @@ const App: React.FC = () => {
         // 🔥 NEW: Reset cancellation token at job start
         resetCancellationToken();
         
-        const log = (msg: string, forceGlobal = false) => { 
-            if (targetId) store.addJobLog(targetId, msg);
-            if (!silentMode || forceGlobal) store.addGodLog(msg); 
-        };
+        // 🔥 FIX: Changed second parameter from boolean to number to match orchestrator signature
+const log = (msg: string, _progressOrForce?: number | boolean) => { 
+    // Handle both boolean (forceGlobal) and number (progress) for compatibility
+    const forceGlobal = typeof _progressOrForce === 'boolean' ? _progressOrForce : false;
+    if (targetId) store.addJobLog(targetId, msg);
+    if (!silentMode || forceGlobal) store.addGodLog(msg); 
+};
+
         
         // 🔥 NEW: Helper to check cancellation at phase boundaries
         const checkPhase = (phaseName: string) => {
@@ -3119,11 +3124,12 @@ const App: React.FC = () => {
                                     
                                     {/* Tab Content */}
                                     {reviewTab === 'content' && (
-                                        <ContentPreview 
-                                            contract={activePage.jobState?.contract}
-                                            maxHeight="600px"
-                                        />
-                                    )}
+    <ContentPreview 
+        html={activePage.jobState?.contract?.htmlContent || ''}
+        maxHeight="600px"
+    />
+)}
+
                                     
                                     {reviewTab === 'qa' && (
                                         <QASwarmPanel 
