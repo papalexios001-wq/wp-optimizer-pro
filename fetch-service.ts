@@ -637,6 +637,12 @@ export async function validateUrl(
 ): Promise<UrlValidationResult> {
     const startTime = Date.now();
     
+    // 🔧 Helper function to safely get content-type
+    const getContentType = (headers: Headers): string | undefined => {
+        const ct = headers.get('content-type');
+        return ct !== null ? ct : undefined;
+    };
+    
     // Strategy 1: HEAD request (fastest)
     try {
         const controller = new AbortController();
@@ -658,7 +664,7 @@ export async function validateUrl(
             status: headRes.status, 
             isValid: headRes.status >= 200 && headRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: (headRes.headers.get('content-type') ?? undefined) as string | undefined,
+            contentType: getContentType(headRes.headers),  // ✅ FIXED
             redirectUrl: headRes.url !== url ? headRes.url : undefined
         };
     } catch {
@@ -683,7 +689,7 @@ export async function validateUrl(
             status: proxyRes.status, 
             isValid: proxyRes.status >= 200 && proxyRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: proxyRes.headers.get('content-type') ?? undefined
+            contentType: getContentType(proxyRes.headers)  // ✅ FIXED
         };
     } catch {
         // Continue to next strategy
@@ -714,6 +720,7 @@ export async function validateUrl(
         responseTime: Date.now() - startTime 
     };
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔄 BATCH PROCESSOR — FOR PARALLEL OPERATIONS
