@@ -958,10 +958,11 @@ export const isPageProcessing = (pageId: string): boolean => {
 export const getOptimizationSettings = () => {
     const state = useAppStore.getState();
     return {
-        mode: state.optimizationMode,
-        ...state.optimizationConfig
+        ...state.optimizationConfig,       // ✅ SPREAD FIRST
+        mode: state.optimizationMode       // ✅ THEN OVERRIDE 'mode' — NO DUPLICATE!
     };
 };
+
 
 /**
  * Check if semantic cache has valid entry

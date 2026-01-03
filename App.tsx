@@ -619,7 +619,6 @@ function countQAPatternsOutsideFAQ(html: string): number {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function logContentStructure(html: string, log: (msg: string, progress?: number) => void): void {
-
     if (!html) return;
     
     const faqCount = (html.match(/❓|frequently\s+asked/gi) || []).length;
@@ -630,13 +629,14 @@ function logContentStructure(html: string, log: (msg: string, progress?: number)
     const tableCount = (html.match(/<table/gi) || []).length;
     const qaPatternCount = countQAPatternsOutsideFAQ(html);
     
-    log(`   📊 Content Structure: H2s=${h2Count} | H3s=${h3Count} | Images=${imageCount} | Lists=${listCount} | Tables=${tableCount}`, true);
-    log(`   📊 FAQ sections=${faqCount} | Q&A patterns outside FAQ=${qaPatternCount}`, true);
+    log(`   📊 Content Structure: H2s=${h2Count} | H3s=${h3Count} | Images=${imageCount} | Lists=${listCount} | Tables=${tableCount}`);  // ✅ FIXED
+    log(`   📊 FAQ sections=${faqCount} | Q&A patterns outside FAQ=${qaPatternCount}`);  // ✅ FIXED
     
     if (qaPatternCount > 5) {
-        log(`   ⚠️ WARNING: High Q&A pattern count (${qaPatternCount}) — main content should be prose`, true);
+        log(`   ⚠️ WARNING: High Q&A pattern count (${qaPatternCount}) — main content should be prose`);  // ✅ FIXED
     }
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🖼️ IMAGE EXTRACTION UTILITY
