@@ -28,7 +28,8 @@ import {
     ContentContract, GenerateConfig, SiteContext, EntityGapAnalysis,
     NeuronAnalysisResult, ExistingContentAnalysis, InternalLinkTarget,
     ValidatedReference, GeoTargetConfig, NeuronTerm, APP_VERSION,
-    SerpLengthPolicy, ContentOutline, SectionOutline, GeneratedSection
+    SerpLengthPolicy, ContentOutline, SectionOutline, GeneratedSection,
+    InternalLinkResult  // ← ADD THIS
 } from '../types';
 
 import { 
