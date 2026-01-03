@@ -408,7 +408,7 @@ async function titanFetchInternal(
                 
                 // Handle specific error codes
                 if (res.status === 429) {
-                    const retryAfter = res.headers.get('Retry-After');
+                    const retryAfter = safeGetHeader(res.headers, 'Retry-After');
                     const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : calculateBackoff(attempt);
                     console.warn(`[TITAN FETCH] Rate limited, waiting ${waitTime}ms`);
                     await sleep(waitTime);
@@ -646,11 +646,11 @@ export async function validateUrl(
 ): Promise<UrlValidationResult> {
     const startTime = Date.now();
     
-    // 🔧 Helper function to safely get content-type
-    const getContentType = (headers: Headers): string | undefined => {
-        const ct = headers.get('content-type');
-        return ct !== null ? ct : undefined;
-    };
+    // ❌ DELETE THIS LOCAL HELPER — USE THE GLOBAL ONE INSTEAD
+    // const getContentType = (headers: Headers): string | undefined => {
+    //     const ct = headers.get('content-type');
+    //     return ct !== null ? ct : undefined;
+    // };
     
     // Strategy 1: HEAD request (fastest)
     try {
@@ -673,7 +673,7 @@ export async function validateUrl(
             status: headRes.status, 
             isValid: headRes.status >= 200 && headRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: getContentType(headRes.headers),  // ✅ FIXED
+            contentType: safeGetHeader(headRes.headers, 'content-type'),  // ✅ USE GLOBAL HELPER
             redirectUrl: headRes.url !== url ? headRes.url : undefined
         };
     } catch {
@@ -689,7 +689,7 @@ export async function validateUrl(
         const proxyRes = await fetch(proxyUrl, { 
             method: 'GET', 
             signal: controller.signal,
-            headers: { 'Range': 'bytes=0-1024' } // Only fetch first 1KB
+            headers: { 'Range': 'bytes=0-1024' }
         });
         
         clearTimeout(timeoutId);
@@ -698,7 +698,7 @@ export async function validateUrl(
             status: proxyRes.status, 
             isValid: proxyRes.status >= 200 && proxyRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: getContentType(proxyRes.headers)  // ✅ FIXED
+            contentType: safeGetHeader(proxyRes.headers, 'content-type')  // ✅ USE GLOBAL HELPER
         };
     } catch {
         // Continue to next strategy
@@ -729,6 +729,7 @@ export async function validateUrl(
         responseTime: Date.now() - startTime 
     };
 }
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
