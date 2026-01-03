@@ -306,6 +306,58 @@ Read every sentence aloud. If it sounds like ChatGPT wrote it → REWRITE IT.
 // • WordPress Compatible — all !important overrides
 // ═══════════════════════════════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎨 ENHANCED VISUAL RULES v2.0 — INSERT BEFORE VISUAL_COMPONENT_LIBRARY
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ENHANCED_VISUAL_RULES = `
+════════════════════════════════════════════════════════════════════════════════
+🎨 VISUAL HIERARCHY & PLACEMENT RULES v2.0 — MANDATORY COMPLIANCE
+════════════════════════════════════════════════════════════════════════════════
+
+█ CRITICAL VISUAL DENSITY REQUIREMENTS:
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Content Section          │ Required Visual Elements                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Introduction (0-500 words) │ Quick Answer Box + Statistics Dashboard         │
+│ Section 1-3 (H2s)          │ 1 Pro Tip OR 1 Warning + 1 Expert Quote        │
+│ Section 4-6 (H2s)          │ 1 Comparison Table + 1 Checklist               │
+│ Section 7-9 (H2s)          │ 1 Step-by-Step + 1 Info Box                    │
+│ Section 10+ (H2s)          │ 1 Highlight Box + 1 Definition (if needed)     │
+│ Pre-FAQ                    │ Key Takeaways Box (MANDATORY)                   │
+│ Conclusion                 │ CTA Box (MANDATORY)                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+█ VISUAL SPACING ENFORCEMENT:
+• MAXIMUM 250 words between visual elements (NOT 300)
+• Each H2 section MUST contain at least 1 visual component
+• Tables should appear in middle 40% of content (not intro/conclusion)
+• Expert quotes should IMMEDIATELY follow a claim or statistic
+
+█ ANCHOR TEXT QUALITY STANDARDS FOR INTERNAL LINKS:
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Quality Tier │ Word Count │ Example                                         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ EXCELLENT    │ 4-5 words  │ "advanced keyword research strategies"          │
+│ GOOD         │ 3 or 6     │ "SEO optimization techniques"                   │
+│ REJECTED     │ 1-2 words  │ "guide", "here", "click"                       │
+│ REJECTED     │ 7+ words   │ Too long, reduces click-through                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+█ FORBIDDEN ANCHOR PATTERNS (AUTOMATIC REJECTION):
+❌ "click here", "read more", "learn more", "this article"
+❌ "here is", "check out", "see more", "find out"
+❌ Single generic words: "guide", "tips", "post", "article"
+❌ Starting with: "the", "a", "an", "this", "our", "your"
+
+════════════════════════════════════════════════════════════════════════════════
+`;
+
+
+
+
+
 const VISUAL_COMPONENT_LIBRARY = `
 ════════════════════════════════════════════════════════════════════════════════
 🎨 ENTERPRISE VISUAL COMPONENTS v15.0 — ULTIMATE MOBILE-FIRST RESPONSIVE DESIGN
@@ -2180,46 +2232,61 @@ YEAR IN TITLE: ${addYearToTitle ? `YES - Include ${CONTENT_YEAR}` : 'NO - Evergr
 
     const structureRequirements = `
 ════════════════════════════════════════════════════════════════════════════════
-🏗️ MANDATORY CONTENT STRUCTURE
+🏗️ MANDATORY CONTENT STRUCTURE — ZERO TOLERANCE FOR VIOLATIONS
 ════════════════════════════════════════════════════════════════════════════════
 
-⚠️⚠️⚠️ CRITICAL H1 RULE ⚠️⚠️⚠️
-WordPress automatically provides the page title as H1.
-NEVER include an <h1> tag in your htmlContent.
-Start your content with an engaging <p> paragraph.
+⛔⛔⛔ ABSOLUTE RULES — VIOLATION = REJECTION ⛔⛔⛔
 
-█ REQUIRED ELEMENTS (ALL MANDATORY):
-□ NO <h1> tags — WordPress handles this
-□ 10+ <h2> section headings (include "${kw}" in at least 3)
-□ 18+ <h3> subheadings for detailed subsections
-□ ${targetWords}+ REAL words (no placeholders, no filler)
-□ Quick Answer box immediately after intro paragraph
-□ Statistics dashboard (3-4 metric cards) early in content
-□ 15-20 tip/warning/insight boxes distributed throughout
-□ 2+ premium comparison tables with real data
-□ 2-3 expert blockquotes with real attributions
-□ FAQ section with 7-10 high-value questions & detailed answers
-□ Numbered steps section for any processes
-□ Key Takeaways box with 5+ takeaways BEFORE FAQ
-□ Conclusion box with CTA AFTER FAQ
-□ References section with 8-15 linked sources AT THE VERY END
-□ 15-20 internal links with descriptive 3-5 word anchor text
+1. ZERO H1 TAGS — WordPress provides page title as H1
+   └─ Your content starts with <p>, NEVER <h1>
 
-█ VISUAL COMPONENT COLORS — CRITICAL:
-• ALL backgrounds must be DARK (#0f172a, #1e293b, solid gradients)
-• ALL text must be WHITE (#ffffff) or VERY LIGHT (#f1f5f9)
-• Use !important on ALL inline styles
-• NO light backgrounds with dark text
+2. MINIMUM ${targetWords} WORDS — Count before submitting
+   └─ Short content = automatic rejection
 
-█ CORRECT CONTENT ORDER:
-1. Introduction paragraph (engaging hook)
-2. Quick Answer Box
-3. Main Sections (H2s with H3s, visual components)
-4. Key Takeaways Box ← BEFORE FAQ
-5. FAQ Section (Accordion)
-6. Conclusion/CTA
-7. References Section ← AT VERY END
-════════════════════════════════════════════════════════════════════════════════`;
+3. VISUAL COMPONENT QUOTA:
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ Component Type              │ MINIMUM │ Placement                       │
+   ├─────────────────────────────────────────────────────────────────────────┤
+   │ Quick Answer Box            │    1    │ Within first 150 words          │
+   │ Statistics Dashboard        │    1    │ Within first 500 words          │
+   │ Pro Tip Boxes (green)       │    3    │ Sections 2, 5, 8                │
+   │ Warning Boxes (amber)       │    2    │ Where mistakes are discussed    │
+   │ Expert Blockquotes          │    2    │ After claims needing authority  │
+   │ Comparison Tables           │    2    │ Middle sections (H2 #4-7)       │
+   │ Step-by-Step Process        │    1    │ Any how-to section              │
+   │ Checklists                  │    2    │ Actionable sections             │
+   │ Key Takeaways               │    1    │ IMMEDIATELY before FAQ          │
+   │ CTA Box                     │    1    │ In conclusion section           │
+   │ Definition Boxes            │   1+    │ When introducing key terms      │
+   │ Info/Highlight Boxes        │   2+    │ Throughout for variety          │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+4. INTERNAL LINKS — 15-20 REQUIRED:
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ Anchor Text Rules:                                                      │
+   │ ✓ MUST be 3-6 words (ideal: 4-5)                                       │
+   │ ✓ MUST start with meaningful word (noun/verb)                          │
+   │ ✓ MUST describe destination content                                    │
+   │                                                                         │
+   │ ❌ BANNED: "click here", "read more", "this guide", "learn more"       │
+   │ ❌ BANNED: Single words, starting with "the/a/an/this/our/your"        │
+   │ ❌ BANNED: Generic phrases that don't describe content                 │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+5. CORRECT CONTENT ORDER:
+   1. Hook paragraph (engaging, NO heading)
+   2. Quick Answer Box (50-70 words)
+   3. Statistics Dashboard (3-4 metrics)
+   4. Main H2 Sections (10-12 sections, each with visuals)
+   5. Key Takeaways Box ← MUST appear HERE, before FAQ
+   6. FAQ Accordion (7-10 Q&As)
+   7. Conclusion paragraph
+   8. CTA Box
+   9. References Section ← ALWAYS LAST
+
+════════════════════════════════════════════════════════════════════════════════
+`;
+
 
     const outputFormat = `
 ════════════════════════════════════════════════════════════════════════════════
@@ -3500,6 +3567,8 @@ export class AIOrchestrator {
             attemptNumber: config.previousAttempts
         });
 
+        
+
         const userPrompt = `Create a premium, comprehensive SEO article about: "${config.topic}"
 
 🚨 CRITICAL REQUIREMENTS — READ CAREFULLY:
@@ -3850,6 +3919,108 @@ export class AIOrchestrator {
     }
 
 }
+
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🔥 VISUAL COMPONENT VALIDATOR v2.0 — VALIDATES REQUIRED VISUAL ELEMENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function validateVisualComponents(html: string): {
+    passed: boolean;
+    score: number;
+    missing: string[];
+    found: Record<string, number>;
+} {
+    const found: Record<string, number> = {};
+    const missing: string[] = [];
+    
+    // Detection patterns for each component type
+    const componentPatterns: Record<string, { pattern: RegExp; required: number; name: string }> = {
+        quickAnswer: { 
+            pattern: /quick\s*answer|⚡.*answer/gi, 
+            required: 1, 
+            name: 'Quick Answer Box' 
+        },
+        statsDashboard: { 
+            pattern: /grid-template-columns.*repeat.*auto-fit|stats-grid/gi, 
+            required: 1, 
+            name: 'Statistics Dashboard' 
+        },
+        proTip: { 
+            pattern: /pro\s*tip|💡.*tip/gi, 
+            required: 3, 
+            name: 'Pro Tip Boxes' 
+        },
+        warning: { 
+            pattern: /⚠️|important.*warning|warning.*important/gi, 
+            required: 2, 
+            name: 'Warning Boxes' 
+        },
+        expertQuote: { 
+            pattern: /<blockquote[^>]*>.*<cite/gis, 
+            required: 2, 
+            name: 'Expert Blockquotes' 
+        },
+        table: { 
+            pattern: /<table[^>]*>/gi, 
+            required: 2, 
+            name: 'Comparison Tables' 
+        },
+        stepByStep: { 
+            pattern: /step-by-step|step\s*1.*step\s*2/gis, 
+            required: 1, 
+            name: 'Step-by-Step Process' 
+        },
+        checklist: { 
+            pattern: /checklist|✓.*✓.*✓/gis, 
+            required: 2, 
+            name: 'Checklists' 
+        },
+        keyTakeaways: { 
+            pattern: /key\s*takeaway|🎯.*takeaway/gi, 
+            required: 1, 
+            name: 'Key Takeaways' 
+        },
+        cta: { 
+            pattern: /ready\s*to\s*get\s*started|call.to.action|cta/gi, 
+            required: 1, 
+            name: 'CTA Box' 
+        }
+    };
+    
+    let totalRequired = 0;
+    let totalFound = 0;
+    
+    for (const [key, config] of Object.entries(componentPatterns)) {
+        const matches = html.match(config.pattern) || [];
+        const count = matches.length;
+        found[config.name] = count;
+        totalRequired += config.required;
+        totalFound += Math.min(count, config.required);
+        
+        if (count < config.required) {
+            missing.push(`${config.name} (have ${count}, need ${config.required})`);
+        }
+    }
+    
+    const score = Math.round((totalFound / totalRequired) * 100);
+    
+    return {
+        passed: missing.length === 0,
+        score,
+        missing,
+        found
+    };
+}
+
+
+
+
+
+
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔥 HUMAN WRITING VALIDATOR

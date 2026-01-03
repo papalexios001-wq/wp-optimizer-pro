@@ -470,8 +470,7 @@ export const useAppStore = create<AppState>()(
                         attempts: 0,
                         previousScores: [],
                         allFeedback: [],
-                        startTime: Date.now(),
-                        checkpoints: []  // 🔥 ADD THIS
+                        startTime: Date.now()
                     };
                 }
             }),
@@ -508,8 +507,7 @@ export const useAppStore = create<AppState>()(
                             lastUpdated: Date.now(),
                             attempts: 0,
                             previousScores: [],
-                            allFeedback: [],
-                            checkpoints: []  // 🔥 ADD THIS
+                            allFeedback: []
                         };
                     }
                     Object.assign(state.pages[idx].jobState!, updates);

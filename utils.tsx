@@ -1537,6 +1537,76 @@ const QA_RULES: QARuleDefinition[] = [
             };
         }
     },
+
+
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 VISUAL COMPONENT QUOTA — ENSURES MINIMUM VISUAL ELEMENTS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    {
+        id: 'visual-component-quota',
+        name: 'Visual Component Quota',
+        category: 'critical',
+        severity: 'error',
+        description: 'Content must include minimum required visual components',
+        scoreImpact: 70,
+        weight: 0.9,
+        enabled: true,
+        detect: (contract, context, thresholds) => {
+            const html = contract.htmlContent;
+            
+            // Count visual components
+            const counts = {
+                quickAnswer: (html.match(/quick\s*answer|⚡/gi) || []).length,
+                statsDashboard: (html.match(/grid-template-columns|stats/gi) || []).length,
+                proTip: (html.match(/pro\s*tip|💡/gi) || []).length,
+                warning: (html.match(/⚠️|important|warning/gi) || []).length,
+                blockquote: (html.match(/<blockquote/gi) || []).length,
+                table: (html.match(/<table/gi) || []).length,
+                keyTakeaways: (html.match(/key\s*takeaway|🎯/gi) || []).length,
+            };
+            
+            const requirements = {
+                quickAnswer: 1,
+                statsDashboard: 1,
+                proTip: 2,
+                warning: 1,
+                blockquote: 1,
+                table: 1,
+                keyTakeaways: 1,
+            };
+            
+            const missing: string[] = [];
+            let met = 0;
+            let total = Object.keys(requirements).length;
+            
+            for (const [key, required] of Object.entries(requirements)) {
+                if (counts[key as keyof typeof counts] >= required) {
+                    met++;
+                } else {
+                    missing.push(`${key}: ${counts[key as keyof typeof counts]}/${required}`);
+                }
+            }
+            
+            const score = Math.round((met / total) * 100);
+            const passed = missing.length <= 2; // Allow 2 missing
+            
+            return {
+                passed,
+                score,
+                message: passed 
+                    ? `✓ ${met}/${total} visual component types present`
+                    : `✗ Missing: ${missing.slice(0, 3).join(', ')}`,
+                details: { counts, missing, met, total },
+                autoFixable: false
+            };
+        }
+    },
+
+
+
+
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1874,16 +1944,45 @@ const ANCHOR_QUALITY_THRESHOLDS = {
     ACCEPTABLE_THRESHOLD: 55,
 };
 
-const WEAK_BOUNDARY_WORDS = new Set([
-    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 
-    'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
-    'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall',
-    'this', 'that', 'these', 'those', 'it', 'its', 'if', 'when', 'where', 'while', 'so',
-    'about', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between',
-    'your', 'our', 'their', 'my', 'his', 'her', 'who', 'which', 'what', 'how', 'why',
-    'can', 'also', 'just', 'only', 'very', 'more', 'most', 'some', 'any', 'all', 'both',
-    'each', 'few', 'many', 'much', 'such', 'other', 'another', 'even', 'still', 'already'
+const WEAK_START_WORDS = new Set([
+    // Articles
+    'the', 'a', 'an',
+    // Conjunctions
+    'and', 'or', 'but', 'nor', 'yet', 'so',
+    // Prepositions
+    'with', 'for', 'to', 'in', 'on', 'at', 'by', 'from', 'about', 'into',
+    // Demonstratives
+    'this', 'that', 'these', 'those',
+    // Be verbs
+    'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    // Have verbs
+    'have', 'has', 'had',
+    // Do verbs
+    'do', 'does', 'did',
+    // Modal verbs
+    'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can',
+    // Question words
+    'if', 'when', 'where', 'while', 'as', 'so',
+    // Adverbs
+    'just', 'also', 'only', 'very', 'really', 'actually',
+    // Possessives
+    'our', 'your', 'my', 'their', 'its',
+    // Quantifiers
+    'some', 'any', 'all', 'both', 'each', 'every', 'few', 'many', 'much',
+    // Other weak starters
+    'about', 'more', 'most', 'other', 'such', 'even', 'still', 'already',
+    'here', 'there', 'now', 'then', 'why', 'how', 'what', 'which', 'who'
 ]);
+
+const WEAK_END_WORDS = new Set([
+    // All weak starters plus:
+    ...WEAK_START_WORDS,
+    // Prepositions that shouldn't end anchors
+    'of', 'etc', 'and', 'or',
+    // Incomplete patterns
+    'a', 'the', 'to', 'for', 'with', 'by', 'in', 'on', 'at'
+]);
+
 
 const BANNED_ANCHOR_PATTERNS: RegExp[] = [
     /^click\s*(here|now|this)?$/i,
@@ -1916,7 +2015,7 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
     // ═══════════════════════════════════════════════════════════════════════════
     
     if (!phrase || typeof phrase !== 'string') {
-        return { valid: false, reason: 'Empty phrase', score: 0, qualityTier: 'rejected', metrics: EMPTY_METRICS };
+        return { valid: false, reason: 'Empty phrase', score: 0, qualityTier: 'rejected' };
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2156,6 +2255,99 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
         reason: qualityTier === 'poor' ? 'Low quality score' : undefined
     };
 }
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🔥 OPTIMAL ANCHOR TEXT GENERATOR v2.0 — GENERATES HIGH-QUALITY ANCHOR CANDIDATES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function generateOptimalAnchor(title: string, maxCandidates: number = 8): string[] {
+    if (!title || title.length < 15) return [];
+    
+    // Clean the title
+    const clean = title
+        .replace(/[|–—:;\[\](){}""''«»<>]/g, ' ')
+        .replace(/\s*[-–—|]\s*(complete\s+)?guide\s*$/i, '')
+        .replace(/\s*[-–—|]\s*\d{4}\s*$/i, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    
+    const words = clean.split(/\s+/).filter(w => w.length >= 2);
+    if (words.length < 3) return [];
+    
+    const candidates: Array<{ phrase: string; score: number }> = [];
+    
+    // Expanded weak start words set
+    const WEAK_START_WORDS_LOCAL = new Set([
+        'the', 'a', 'an', 'and', 'or', 'but', 'nor', 'yet', 'so',
+        'with', 'for', 'to', 'in', 'on', 'at', 'by', 'from', 'about', 'into',
+        'this', 'that', 'these', 'those',
+        'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did',
+        'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can',
+        'if', 'when', 'where', 'while', 'as',
+        'just', 'also', 'only', 'very', 'really', 'actually',
+        'our', 'your', 'my', 'their', 'its',
+        'some', 'any', 'all', 'both', 'each', 'every', 'few', 'many', 'much',
+        'about', 'more', 'most', 'other', 'such', 'even', 'still', 'already',
+        'here', 'there', 'now', 'then', 'why', 'how', 'what', 'which', 'who'
+    ]);
+    
+    // Strategy 1: 4-5 word windows from start (highest value)
+    for (const windowSize of [5, 4]) {
+        if (words.length >= windowSize) {
+            // Skip weak first word if present
+            const startIdx = WEAK_START_WORDS_LOCAL.has(words[0].toLowerCase()) ? 1 : 0;
+            if (words.length - startIdx >= windowSize) {
+                const phrase = words.slice(startIdx, startIdx + windowSize).join(' ');
+                const validation = validateAnchorStrict(phrase, title);
+                if (validation.valid && validation.score >= 60) {
+                    candidates.push({ phrase, score: validation.score + 20 }); // Bonus for optimal length
+                }
+            }
+        }
+    }
+    
+    // Strategy 2: 3-word phrases (acceptable)
+    if (words.length >= 3) {
+        for (let i = 0; i <= Math.min(2, words.length - 3); i++) {
+            const phrase = words.slice(i, i + 3).join(' ');
+            const validation = validateAnchorStrict(phrase, title);
+            if (validation.valid && validation.score >= 55) {
+                candidates.push({ phrase, score: validation.score });
+            }
+        }
+    }
+    
+    // Strategy 3: Action-oriented prefixes
+    const actionPrefixes = ['mastering', 'understanding', 'implementing', 'optimizing'];
+    const corePhrase = words.slice(0, 2).join(' ');
+    for (const prefix of actionPrefixes.slice(0, 2)) {
+        const actionPhrase = `${prefix} ${corePhrase}`;
+        const validation = validateAnchorStrict(actionPhrase, title);
+        if (validation.valid) {
+            candidates.push({ phrase: actionPhrase, score: validation.score - 5 });
+        }
+    }
+    
+    // Dedupe and sort
+    const seen = new Set<string>();
+    return candidates
+        .filter(c => {
+            const lower = c.phrase.toLowerCase();
+            if (seen.has(lower)) return false;
+            seen.add(lower);
+            return true;
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, maxCandidates)
+        .map(c => c.phrase);
+}
+
+
+
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPER: Calculate semantic relevance between anchor and target title
@@ -2536,6 +2728,59 @@ function findSemanticMatchInContent(
 // • Proper section-based distribution
 // • Clean separation: validate → modify → track
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADD these helper functions BEFORE injectInternalLinks
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function calculateOptimalLinkPositions(
+    html: string,
+    targetLinks: number
+): number[] {
+    const textContent = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    const totalLength = textContent.length;
+    
+    // Divide content into zones
+    const zoneSize = totalLength / (targetLinks + 1);
+    const optimalPositions: number[] = [];
+    
+    for (let i = 1; i <= targetLinks; i++) {
+        const targetPos = Math.floor(zoneSize * i);
+        optimalPositions.push(targetPos);
+    }
+    
+    return optimalPositions;
+}
+
+function findNearestSuitablePosition(
+    html: string,
+    targetPosition: number,
+    usedPositions: Set<number>,
+    minDistance: number
+): number | null {
+    const textContent = html.replace(/<[^>]+>/g, ' ');
+    
+    // Search in expanding radius from target
+    for (let radius = 0; radius < 500; radius += 50) {
+        // Check forward
+        const forwardPos = targetPosition + radius;
+        if (forwardPos < textContent.length && 
+            !isPositionTooClose(forwardPos, usedPositions, minDistance)) {
+            return forwardPos;
+        }
+        
+        // Check backward
+        const backwardPos = targetPosition - radius;
+        if (backwardPos > 0 && 
+            !isPositionTooClose(backwardPos, usedPositions, minDistance)) {
+            return backwardPos;
+        }
+    }
+    
+    return null;
+}
+
+
 
 export function injectInternalLinks(
     html: string,
