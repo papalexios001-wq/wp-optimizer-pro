@@ -2010,12 +2010,23 @@ const BANNED_ANCHOR_PATTERNS: RegExp[] = [
 ];
 
 export function validateAnchorStrict(phrase: string, targetTitle?: string): AnchorValidationResult {
+    // Default metrics for rejection cases
+    const defaultMetrics = {
+        wordCount: 0,
+        charCount: 0,
+        meaningfulWordRatio: 0,
+        startsWithStrongWord: false,
+        endsWithStrongWord: false,
+        hasProperNouns: false,
+        semanticRelevance: 0
+    };
+
     // ═══════════════════════════════════════════════════════════════════════════
     // STEP 1: NULL CHECK
     // ═══════════════════════════════════════════════════════════════════════════
     
     if (!phrase || typeof phrase !== 'string') {
-        return { valid: false, reason: 'Empty phrase', score: 0, qualityTier: 'rejected' };
+        return { valid: false, reason: 'Empty phrase', score: 0, qualityTier: 'rejected', metrics: defaultMetrics };
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2035,7 +2046,7 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
     const words = cleanText.split(/\s+/).filter(w => w.length > 0);
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🔥 STEP 2.5: CONTRACTION FRAGMENT DETECTION (NEW)
+    // STEP 2.5: CONTRACTION FRAGMENT DETECTION
     // ═══════════════════════════════════════════════════════════════════════════
     
     const CONTRACTION_FRAGMENTS = [
@@ -2053,7 +2064,8 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
                 valid: false, 
                 reason: `Ends with contraction fragment "${lastWord}"`, 
                 score: 0, 
-                qualityTier: 'rejected'
+                qualityTier: 'rejected',
+                metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length }
             };
         }
         
@@ -2062,7 +2074,8 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
                 valid: false, 
                 reason: `Starts with contraction fragment "${firstWord}"`, 
                 score: 0, 
-                qualityTier: 'rejected'
+                qualityTier: 'rejected',
+                metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length }
             };
         }
     }
@@ -2076,7 +2089,8 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
             valid: false, 
             reason: `Only ${words.length} word(s) — minimum 3 required`, 
             score: 0, 
-            qualityTier: 'rejected'
+            qualityTier: 'rejected',
+            metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length }
         };
     }
     
@@ -2085,7 +2099,8 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
             valid: false, 
             reason: `${words.length} words exceeds maximum 7`, 
             score: 0, 
-            qualityTier: 'rejected'
+            qualityTier: 'rejected',
+            metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length }
         };
     }
     
@@ -2094,7 +2109,8 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
             valid: false, 
             reason: `Only ${cleanText.length} chars — minimum 15`, 
             score: 0, 
-            qualityTier: 'rejected' 
+            qualityTier: 'rejected',
+            metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length }
         };
     }
     
@@ -2103,7 +2119,8 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
             valid: false, 
             reason: `${cleanText.length} chars exceeds maximum 65`, 
             score: 0, 
-            qualityTier: 'rejected' 
+            qualityTier: 'rejected',
+            metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length }
         };
     }
     
@@ -2132,7 +2149,8 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
                 valid: false, 
                 reason: 'Matches banned generic anchor pattern', 
                 score: 0, 
-                qualityTier: 'rejected'
+                qualityTier: 'rejected',
+                metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length }
             };
         }
     }
@@ -2141,7 +2159,7 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
     // STEP 5: WEAK WORD CHECKS
     // ═══════════════════════════════════════════════════════════════════════════
     
-    const WEAK_START_WORDS = new Set([
+    const WEAK_START_WORDS_LOCAL = new Set([
         'the', 'a', 'an', 'and', 'or', 'but', 'with', 'for', 'to', 'in', 'on', 'at', 'by',
         'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
         'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
@@ -2150,7 +2168,7 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
         'about', 'more', 'most', 'other', 'such', 'even', 'still', 'already'
     ]);
     
-    const WEAK_END_WORDS = new Set([
+    const WEAK_END_WORDS_LOCAL = new Set([
         'the', 'a', 'an', 'and', 'or', 'but', 'with', 'for', 'to', 'in', 'on', 'at', 'by', 'of',
         'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
         'that', 'which', 'who', 'whom', 'whose', 'this', 'these', 'those',
@@ -2160,21 +2178,23 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
     const firstWord = words[0].toLowerCase().replace(/[^a-z]/g, '');
     const lastWord = words[words.length - 1].toLowerCase().replace(/[^a-z]/g, '');
     
-    if (WEAK_START_WORDS.has(firstWord)) {
+    if (WEAK_START_WORDS_LOCAL.has(firstWord)) {
         return { 
             valid: false, 
             reason: `Starts with weak word "${firstWord}"`, 
             score: 25, 
-            qualityTier: 'rejected'
+            qualityTier: 'rejected',
+            metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length, startsWithStrongWord: false }
         };
     }
     
-    if (WEAK_END_WORDS.has(lastWord)) {
+    if (WEAK_END_WORDS_LOCAL.has(lastWord)) {
         return { 
             valid: false, 
             reason: `Ends with weak word "${lastWord}"`, 
             score: 25, 
-            qualityTier: 'rejected'
+            qualityTier: 'rejected',
+            metrics: { ...defaultMetrics, wordCount: words.length, charCount: cleanText.length, endsWithStrongWord: false }
         };
     }
     
@@ -2194,7 +2214,16 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
             valid: false, 
             reason: `Only ${Math.round(meaningfulRatio * 100)}% meaningful words (need 40%+)`, 
             score: 30, 
-            qualityTier: 'poor'
+            qualityTier: 'poor',
+            metrics: { 
+                wordCount: words.length, 
+                charCount: cleanText.length, 
+                meaningfulWordRatio: meaningfulRatio,
+                startsWithStrongWord: !WEAK_START_WORDS_LOCAL.has(firstWord),
+                endsWithStrongWord: !WEAK_END_WORDS_LOCAL.has(lastWord),
+                hasProperNouns: false,
+                semanticRelevance: 0
+            }
         };
     }
     
@@ -2212,12 +2241,14 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
         score += 8;
     }
     
+    let semanticRelevance = 0;
     if (targetTitle) {
-        const relevanceScore = calculateAnchorRelevance(cleanText, targetTitle);
-        score += Math.round(relevanceScore * 15);
+        semanticRelevance = calculateAnchorRelevance(cleanText, targetTitle);
+        score += Math.round(semanticRelevance * 15);
     }
     
-    if (meaningfulWords.length > 0 && meaningfulWords[0].toLowerCase() === firstWord) {
+    const startsWithStrongWord = meaningfulWords.length > 0 && meaningfulWords[0].toLowerCase() === firstWord;
+    if (startsWithStrongWord) {
         score += 5;
     }
     
@@ -2226,7 +2257,8 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
     }
     
     const properNouns = words.slice(1).filter(w => /^[A-Z]/.test(w));
-    if (properNouns.length > 0) {
+    const hasProperNouns = properNouns.length > 0;
+    if (hasProperNouns) {
         score += Math.min(5, properNouns.length * 2);
     }
     
@@ -2248,11 +2280,23 @@ export function validateAnchorStrict(phrase: string, targetTitle?: string): Anch
         qualityTier = 'poor';
     }
     
+    // Build final metrics
+    const finalMetrics = {
+        wordCount: words.length,
+        charCount: cleanText.length,
+        meaningfulWordRatio: meaningfulRatio,
+        startsWithStrongWord,
+        endsWithStrongWord: !WEAK_END_WORDS_LOCAL.has(lastWord),
+        hasProperNouns,
+        semanticRelevance
+    };
+    
     return { 
         valid: qualityTier !== 'poor', 
         score, 
         qualityTier,
-        reason: qualityTier === 'poor' ? 'Low quality score' : undefined
+        reason: qualityTier === 'poor' ? 'Low quality score' : undefined,
+        metrics: finalMetrics
     };
 }
 

@@ -658,7 +658,7 @@ export async function validateUrl(
             status: headRes.status, 
             isValid: headRes.status >= 200 && headRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: headRes.headers.get('content-type') || undefined,
+            contentType: headRes.headers.get('content-type') ?? undefined,
             redirectUrl: headRes.url !== url ? headRes.url : undefined
         };
     } catch {
@@ -683,7 +683,7 @@ export async function validateUrl(
             status: proxyRes.status, 
             isValid: proxyRes.status >= 200 && proxyRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: proxyRes.headers.get('content-type') || undefined
+            contentType: proxyRes.headers.get('content-type') ?? undefined
         };
     } catch {
         // Continue to next strategy

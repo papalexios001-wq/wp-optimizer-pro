@@ -33,7 +33,6 @@ import {
 
 import { 
     injectInternalLinks,
-    validateAnchorStrict,
     // ... other imports from utils
 } from '../utils';
 
@@ -3874,7 +3873,7 @@ export class AIOrchestrator {
             onProgress?.(`   ✅ Added ${linkResult.linksAdded.length} internal links`);
             
             // Log details for each link
-            linkResult.linksAdded.forEach((link, i) => {
+            linkResult.linksAdded.forEach((link: InternalLinkResult, i: number) => {
                 onProgress?.(`      ${i + 1}. "${link.anchorText}" → ${link.url.substring(0, 50)}...`);
             });
             
@@ -3882,7 +3881,7 @@ export class AIOrchestrator {
             if (linkResult.linksAdded.length < 8) {
                 onProgress?.(`   ⚠️ WARNING: Only ${linkResult.linksAdded.length} links added (target: 8+)`);
                 onProgress?.(`   ⚠️ Skipped reasons:`);
-                linkResult.skippedReasons.forEach((reason, url) => {
+                linkResult.skippedReasons.forEach((reason: string, url: string) => {
                     onProgress?.(`      - ${url.substring(0, 40)}: ${reason}`);
                 });
             }
