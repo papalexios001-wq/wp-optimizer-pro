@@ -658,7 +658,7 @@ export async function validateUrl(
             status: headRes.status, 
             isValid: headRes.status >= 200 && headRes.status < 400, 
             responseTime: Date.now() - startTime,
-            contentType: headRes.headers.get('content-type') ?? undefined,
+            contentType: (headRes.headers.get('content-type') ?? undefined) as string | undefined,
             redirectUrl: headRes.url !== url ? headRes.url : undefined
         };
     } catch {
